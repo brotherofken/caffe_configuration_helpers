@@ -1,2 +1,3 @@
-# caffe_configuration_helpers
+# Caffe Configuration Helpers
+
 Wrapper around caffe.pycaffe for less-error-prone writing of network configurations
