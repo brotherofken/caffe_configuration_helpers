@@ -3,6 +3,7 @@
 import sys
 sys.path.insert(0, '..')
 
+from caffe import params as params
 import network
 
 common_params = [dict(lr_mult = 1, decay_mult = 1), dict(lr_mult = 2, decay_mult = 0)]
@@ -12,7 +13,7 @@ fill_const = dict(type='constant', value = 0.2)
 conv_kwargs = dict(param = common_params, weight_filler = fill_xavier, bias_filler = fill_const)
 
 inception3a_kwargs = dict(outs_1x1 = 64, outs_3x3_reduce = 96,  outs_3x3 = 128, outs_5x5_reduce = 16, outs_5x5 = 32, outs_pool_proj = 32)
-inception3b_kwargs = dict(outs_1x1 = 128, outs_3x3_reduce = 128, outs_3x3 = 128, outs_5x5_reduce = 32, outs_5x5 = 96, outs_pool_proj = 64)
+inception3b_kwargs = dict(outs_1x1 = 128, outs_3x3_reduce = 128, outs_3x3 = 192, outs_5x5_reduce = 32, outs_5x5 = 96, outs_pool_proj = 64)
 
 inception4a_kwargs = dict(outs_1x1 = 192, outs_3x3_reduce = 96,  outs_3x3 = 208, outs_5x5_reduce = 16, outs_5x5 = 48, outs_pool_proj = 64)
 inception4b_kwargs = dict(outs_1x1 = 160, outs_3x3_reduce = 112, outs_3x3 = 224, outs_5x5_reduce = 24, outs_5x5 = 64, outs_pool_proj = 64)
@@ -23,20 +24,20 @@ inception4e_kwargs = dict(outs_1x1 = 256, outs_3x3_reduce = 160, outs_3x3 = 320,
 inception5a_kwargs = dict(outs_1x1 = 256, outs_3x3_reduce = 160,  outs_3x3 = 320, outs_5x5_reduce = 32, outs_5x5 = 128, outs_pool_proj = 128)
 inception5b_kwargs = dict(outs_1x1 = 384, outs_3x3_reduce = 192, outs_3x3 = 384, outs_5x5_reduce = 48, outs_5x5 = 128, outs_pool_proj = 128)
 
-
-googlenet = Network(32)
+googlenet = None
+googlenet = network.Network(32)
 
 l_conv1 = googlenet.add_convolution(googlenet.blob_data(), counter = 'conv1/7x7_s2',
                                     num_output = 64, pad = 3, kernel_size = 7, stride = 2,
                                     **conv_kwargs)
-l_relu1 = googlenet.add_relu(l_conv1)
+l_relu1 = googlenet.add_relu(l_conv1, counter = 'conv1/relu_7x7')
 l_pool1 = googlenet.add_pooling(l_relu1, counter = 'pool1/3x3_s2', pool = params.Pooling.MAX, kernel_size = 3, stride = 2)
 l_lrn1 = googlenet.add_lrn(l_pool1, counter = 'pool1/norm', local_size = 5, alpha = 0.0001, beta = 0.75)
 
 l_conv2_reduce = googlenet.add_convolution(l_lrn1, counter = 'conv2/3x3_reduce', num_output = 64, kernel_size = 1, **conv_kwargs)
-l_conv2_reduce_relu = googlenet.add_relu(l_conv2_reduce)
-l_conv2_3x3 =googlenet.add_convolution(l_conv2_reduce_relu, counter = 'conv2/3x3', num_output = 192, pad = 3, kernel_size = 3, **conv_kwargs)
-l_conv2_3x3_relu = googlenet.add_relu(l_conv2_3x3)
+l_conv2_reduce_relu = googlenet.add_relu(l_conv2_reduce, counter = 'conv2/relu_3x3_reduce')
+l_conv2_3x3 =googlenet.add_convolution(l_conv2_reduce_relu, counter = 'conv2/3x3', num_output = 192, pad = 1, kernel_size = 3, **conv_kwargs)
+l_conv2_3x3_relu = googlenet.add_relu(l_conv2_3x3, counter = 'conv2/relu_3x3')
 
 l_lrn2 = googlenet.add_lrn(l_conv2_3x3_relu, counter = 'conv2/norm2', local_size = 5, alpha = 0.0001, beta = 0.75)
 l_pool2 = googlenet.add_pooling(l_lrn2, counter = 'pool2/3x3_s2', pool = params.Pooling.MAX, kernel_size = 3, stride = 2)
@@ -71,5 +72,6 @@ l_softmax = googlenet.add_softmax_with_loss(l_dense1, loss_weight = 1)
 print(str(googlenet))
 
 text_file = open("googlenet.prototxt", "w")
+text_file.write('name: \"GoogleNet\"\n')
 text_file.write(str(googlenet))
 text_file.close()

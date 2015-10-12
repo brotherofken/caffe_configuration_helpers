@@ -5,11 +5,12 @@ from caffe.pycaffe import Net
 
 # Class representing Caffe network
 class Network():
-    # Counter for layers of different types, e.g. conv, relu, pool.
-    counters = dict()
 
 
     def __init__(self, batch_size = 32, shape = (32, 32)):
+        # Counter for layers of different types, e.g. conv, relu, pool.
+        self.counters = dict()
+
         self.n = caffe.NetSpec()
         # Dummy data layer must be edited manually in prototxt
         self.n.data, self.n.label = layers.DummyData(shape=[dict(dim=[batch_size, 1, shape[0], shape[1]]),
@@ -25,13 +26,14 @@ class Network():
         return self.n.label
 
     def add_layer(self, bottom, layer_type, counter, **kwargs):
-    """
-    Append new layer to network.
-        bottom - previous layer
-        layer_type - caffe layer type name (Convolution, Dropout, Pooling, ReLU, LRN, etc.)
-        counter - name of counter to increment
-    """
-        name = counter + str(self.counters.get(counter, 1))
+        """
+        Append new layer to network.
+            bottom - previous layer
+            layer_type - caffe layer type name (Convolution, Dropout, Pooling, ReLU, LRN, etc.)
+            counter - name of counter to increment
+        """
+        suffix = "" if self.counters.get(counter) == None else str(self.counters.get(counter, 1))
+        name = counter + suffix
         layer = layers.__getattr__(layer_type)(bottom, **kwargs)
         self.n.__setattr__(name, layer)
         self.counters[counter] = self.counters.get(counter, 1) + 1
@@ -64,7 +66,8 @@ class Network():
         return self.add_layer(bottom, 'Pooling', counter, **kwargs)
 
     def add_concat(self, bottom_layers, counter = 'concat', **kwargs):
-        name = counter + str(self.counters.get(counter, 1))
+        suffix = "" if self.counters.get(counter) == None else str(self.counters.get(counter, 1))
+        name = counter + suffix
         layer = layers.Concat(*bottom_layers, **kwargs)
         self.n.__setattr__(name, layer)
         self.counters[counter] = self.counters.get(counter, 1) + 1
@@ -75,68 +78,68 @@ class Network():
                         outs_3x3_reduce = 96, outs_3x3 = 128,
                         outs_5x5_reduce = 16, outs_5x5 = 16,
                         outs_pool_proj = 32):
-    """
-    Append Inception-5 layer as described in "Szegedy C. et al. Going deeper with convolutions //arXiv preprint arXiv:1409.4842. – 2014."
-        You need to specify number of outputs for internal layers.
-    """
+        """
+        Append Inception-5 layer as described in Szegedy C. et al. Going deeper with convolutions
+            You need to specify number of outputs for internal layers.
+        """
         # Values that are common for conv layers
         common_params = [dict(lr_mult = 1, decay_mult = 1), dict(lr_mult = 2, decay_mult = 0)]
         fill_xavier = dict(type='xavier')
         fill_const = dict(type='constant', value = 0.2)
         
         #
-        conv_1x1 = self.add_convolution(bottom, counter = counter + '/1x1_',
+        conv_1x1 = self.add_convolution(bottom, counter = counter + '/1x1',
                                         num_output = outs_1x1, kernel_size = 1,
                                         param = common_params,
                                         weight_filler = fill_xavier,
                                         bias_filler = fill_const,
                                         )
-        conv_1x1_relu = self.add_relu(conv_1x1, counter = counter + '/relu_1x1_')
+        conv_1x1_relu = self.add_relu(conv_1x1, counter = counter + '/relu_1x1')
         
         # 3x3 branch : reduce -> relu -> conv -> relu
-        reduce_3x3 = self.add_convolution(bottom, counter = counter + '/3x3_reduce_',
+        reduce_3x3 = self.add_convolution(bottom, counter = counter + '/3x3_reduce',
                                           num_output = outs_3x3_reduce, kernel_size = 1,
                                           param = common_params,
                                           weight_filler = fill_xavier,
                                           bias_filler = fill_const,
                                           )
-        reduce_3x3_relu = self.add_relu(reduce_3x3, counter = counter + '/relu_3x3_reduce_')
-        conv_3x3 = self.add_convolution(reduce_3x3_relu, counter = counter + '/conv_3x3_',
+        reduce_3x3_relu = self.add_relu(reduce_3x3, counter = counter + '/relu_3x3_reduce')
+        conv_3x3 = self.add_convolution(reduce_3x3_relu, counter = counter + '/3x3',
                                         num_output = outs_3x3, kernel_size = 3, pad = 1,
                                         param = common_params,
                                         weight_filler = fill_xavier,
                                         bias_filler = fill_const,
                                         )
-        conv_3x3_relu = self.add_relu(conv_3x3, counter = counter + '/conv_3x3_relu_')
+        conv_3x3_relu = self.add_relu(conv_3x3, counter = counter + '/3x3_relu')
         
         # 5x5 branch : reduce -> relu -> conv -> relu
-        reduce_5x5 = self.add_convolution(bottom, counter = counter + '/5x5_reduce_',
+        reduce_5x5 = self.add_convolution(bottom, counter = counter + '/5x5_reduce',
                                           num_output = outs_5x5_reduce, kernel_size = 1,
                                           param = common_params,
                                           weight_filler = fill_xavier,
                                           bias_filler = fill_const,
                                           )
-        reduce_5x5_relu = self.add_relu(reduce_5x5, counter = counter + '/relu_5x5_reduce_')
-        conv_5x5 = self.add_convolution(reduce_5x5_relu, counter = counter + '/5x5_',
+        reduce_5x5_relu = self.add_relu(reduce_5x5, counter = counter + '/relu_5x5_reduce')
+        conv_5x5 = self.add_convolution(reduce_5x5_relu, counter = counter + '/5x5',
                                         num_output = outs_5x5, kernel_size = 5, pad = 2,
                                         param = common_params,
                                         weight_filler = fill_xavier,
                                         bias_filler = fill_const,
                                         )
-        conv_5x5_relu = self.add_relu(conv_5x5, counter = counter + '/relu_5x5_')
+        conv_5x5_relu = self.add_relu(conv_5x5, counter = counter + '/relu_5x5')
         
         # pool branch: pool-> projection -> relu
-        pool_max_3x3 = self.add_pooling(bottom, counter = counter + '/pool_',
+        pool_max_3x3 = self.add_pooling(bottom, counter = counter + '/pool',
                                         pool = params.Pooling.MAX,
                                         kernel_size = 3, stride = 1, pad = 1,
                                         )
-        pool_max_3x3_proj = self.add_convolution(pool_max_3x3, counter = counter + '/pool_proj_',
+        pool_max_3x3_proj = self.add_convolution(pool_max_3x3, counter = counter + '/pool_proj',
                                                  num_output = outs_pool_proj, kernel_size = 1,
                                                  param = common_params,
                                                  weight_filler = fill_xavier,
                                                  bias_filler = fill_const,
                                                  )
-        pool_max_3x3_relu = self.add_relu(pool_max_3x3_proj, counter = counter + '/relu_pool_proj_')
+        pool_max_3x3_relu = self.add_relu(pool_max_3x3_proj, counter = counter + '/relu_pool_proj')
         
         concatentation = [conv_1x1_relu,conv_3x3_relu,conv_5x5_relu,pool_max_3x3_relu]
         concat = self.add_concat(concatentation, counter = counter + '/output')
@@ -144,3 +147,5 @@ class Network():
 
     def __str__(self):
         return str(self.n.to_proto())
+
+
