@@ -6,6 +6,11 @@ from caffe.pycaffe import Net
 # Class representing Caffe network
 class Network():
 
+    def __is_sequence(self, arg):
+        return (not hasattr(arg, "strip") and 
+                hasattr(arg, "__getitem__") or
+                hasattr(arg, "__iter__"))
+
 
     def __init__(self, batch_size = 32, shape = (32, 32)):
         # Counter for layers of different types, e.g. conv, relu, pool.
@@ -34,13 +39,17 @@ class Network():
         """
         suffix = "" if self.counters.get(counter) == None else str(self.counters.get(counter, 1))
         name = counter + suffix
-        layer = layers.__getattr__(layer_type)(bottom, **kwargs)
+        layer = None
+        if self.__is_sequence(bottom):
+            layer = layers.__getattr__(layer_type)(*bottom, **kwargs)
+        else:
+            layer = layers.__getattr__(layer_type)(bottom, **kwargs)
         self.n.__setattr__(name, layer)
         self.counters[counter] = self.counters.get(counter, 1) + 1
         return layer
 
-    def add_dropout(self, bottom, counter = 'drop', **kwargs):
-        return self.add_layer(bottom, 'Dropout', counter, **kwargs)
+    def add_dropout(self, bottom, counter = 'drop', in_place = True, **kwargs):
+        return self.add_layer(bottom, 'Dropout', counter, in_place = in_place, **kwargs)
 
 
     def add_convolution(self, bottom, counter = 'conv', **kwargs):
@@ -58,12 +67,14 @@ class Network():
     def add_relu(self, bottom, counter = 'relu', in_place = True, **kwargs):
         return self.add_layer(bottom, 'ReLU', counter, in_place = in_place, **kwargs)
 
+
     def add_lrn(self, bottom, counter = 'lrn', **kwargs):
         return self.add_layer(bottom, 'LRN', counter, **kwargs)
 
 
     def add_pooling(self, bottom, counter = 'pool', **kwargs):
         return self.add_layer(bottom, 'Pooling', counter, **kwargs)
+
 
     def add_concat(self, bottom_layers, counter = 'concat', **kwargs):
         suffix = "" if self.counters.get(counter) == None else str(self.counters.get(counter, 1))
@@ -72,6 +83,11 @@ class Network():
         self.n.__setattr__(name, layer)
         self.counters[counter] = self.counters.get(counter, 1) + 1
         return layer
+
+
+    def add_accuracy(self, bottom, counter = 'accuracy', **kwargs):
+        return self.add_layer(bottom, 'Accuracy', counter, **kwargs)
+
 
     def add_inception_5(self, bottom, counter = 'inception5',
                         outs_1x1 = 64, 
@@ -110,7 +126,7 @@ class Network():
                                         weight_filler = fill_xavier,
                                         bias_filler = fill_const,
                                         )
-        conv_3x3_relu = self.add_relu(conv_3x3, counter = counter + '/3x3_relu')
+        conv_3x3_relu = self.add_relu(conv_3x3, counter = counter + '/relu_3x3')
         
         # 5x5 branch : reduce -> relu -> conv -> relu
         reduce_5x5 = self.add_convolution(bottom, counter = counter + '/5x5_reduce',
