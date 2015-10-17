@@ -14,6 +14,7 @@ conv_kwargs = dict(param = common_params, weight_filler = fill_xavier, bias_fill
 
 inception3a_kwargs = dict(outs_1x1 = 64, outs_3x3_reduce = 96,  outs_3x3 = 128, outs_5x5_reduce = 16, outs_5x5 = 32, outs_pool_proj = 32)
 inception3b_kwargs = dict(outs_1x1 = 128, outs_3x3_reduce = 128, outs_3x3 = 192, outs_5x5_reduce = 32, outs_5x5 = 96, outs_pool_proj = 64)
+inception3c_kwargs = dict(outs_1x1 = 128, outs_3x3_reduce = 128, outs_3x3 = 192, outs_5x5_reduce = 32, outs_5x5 = 96, outs_pool_proj = 64)
 
 inception4a_kwargs = dict(outs_1x1 = 192, outs_3x3_reduce = 96,  outs_3x3 = 208, outs_5x5_reduce = 16, outs_5x5 = 48, outs_pool_proj = 64)
 inception4b_kwargs = dict(outs_1x1 = 160, outs_3x3_reduce = 112, outs_3x3 = 224, outs_5x5_reduce = 24, outs_5x5 = 64, outs_pool_proj = 64)
@@ -98,148 +99,7 @@ l_loss2_accuracy1 = googlenet.add_accuracy([l_loss2_clf, googlenet.blob_label()]
 l_loss2_accuracy5 = googlenet.add_accuracy([l_loss2_clf, googlenet.blob_label()], counter = 'loss2/top-5',
                                             include = dict(phase = 1), accuracy_param=dict(top_k=5))
 
-#}
-#layer {
-#  name: "loss2/ave_pool"
-#  type: "Pooling"
-#  bottom: "inception_4d/output"
-#  top: "loss2/ave_pool"
-#  pooling_param {
-#    pool: AVE
-#    kernel_size: 5
-#    stride: 3
-#  }
-#}
-#layer {
-#  name: "loss2/conv"
-#  type: "Convolution"
-#  bottom: "loss2/ave_pool"
-#  top: "loss2/conv"
-#  param {
-#    lr_mult: 1
-#    decay_mult: 1
-#  }
-#  param {
-#    lr_mult: 2
-#    decay_mult: 0
-#  }
-#  convolution_param {
-#    num_output: 128
-#    kernel_size: 1
-#    weight_filler {
-#      type: "xavier"
-#    }
-#    bias_filler {
-#      type: "constant"
-#      value: 0.2
-#    }
-#  }
-#}
-#layer {
-#  name: "loss2/relu_conv"
-#  type: "ReLU"
-#  bottom: "loss2/conv"
-#  top: "loss2/conv"
-#}
-#layer {
-#  name: "loss2/fc"
-#  type: "InnerProduct"
-#  bottom: "loss2/conv"
-#  top: "loss2/fc"
-#  param {
-#    lr_mult: 1
-#    decay_mult: 1
-#  }
-#  param {
-#    lr_mult: 2
-#    decay_mult: 0
-#  }
-#  inner_product_param {
-#    num_output: 1024
-#    weight_filler {
-#      type: "xavier"
-#    }
-#    bias_filler {
-#      type: "constant"
-#      value: 0.2
-#    }
-#  }
-#}
-#layer {
-#  name: "loss2/relu_fc"
-#  type: "ReLU"
-#  bottom: "loss2/fc"
-#  top: "loss2/fc"
-#}
-#layer {
-#  name: "loss2/drop_fc"
-#  type: "Dropout"
-#  bottom: "loss2/fc"
-#  top: "loss2/fc"
-#  dropout_param {
-#    dropout_ratio: 0.7
-#  }
-#}
-#layer {
-#  name: "loss2/classifier"
-#  type: "InnerProduct"
-#  bottom: "loss2/fc"
-#  top: "loss2/classifier"
-#  param {
-#    lr_mult: 1
-#    decay_mult: 1
-#  }
-#  param {
-#    lr_mult: 2
-#    decay_mult: 0
-#  }
-#  inner_product_param {
-#    num_output: 1000
-#    weight_filler {
-#      type: "xavier"
-#    }
-#    bias_filler {
-#      type: "constant"
-#      value: 0
-#    }
-#  }
-#}
-#layer {
-#  name: "loss2/loss"
-#  type: "SoftmaxWithLoss"
-#  bottom: "loss2/classifier"
-#  bottom: "label"
-#  top: "loss2/loss1"
-#  loss_weight: 0.3
-#}
-#layer {
-#  name: "loss2/top-1"
-#  type: "Accuracy"
-#  bottom: "loss2/classifier"
-#  bottom: "label"
-#  top: "loss2/top-1"
-#  include {
-#    phase: TEST
-#  }
-#}
-#layer {
-#  name: "loss2/top-5"
-#  type: "Accuracy"
-#  bottom: "loss2/classifier"
-#  bottom: "label"
-#  top: "loss2/top-5"
-#  include {
-#    phase: TEST
-#  }
-#  accuracy_param {
-#    top_k: 5
-#  }
-#}
-
-
 l_inception5_4e = googlenet.add_inception_5(l_inception5_4d, counter = 'inception_4e', **inception4e_kwargs)
-
-
 
 l_pool4 = googlenet.add_pooling(l_inception5_4e, counter = 'pool4/3x3_s2', pool = params.Pooling.MAX, kernel_size = 3, stride = 2)
 
@@ -268,3 +128,11 @@ text_file = open("googlenet.prototxt", "w")
 text_file.write('name: \"GoogleNet\"\n')
 text_file.write(str(googlenet))
 text_file.close()
+
+# In[]: Print network information
+caffe.set_mode_cpu()
+net = caffe.Net('googlenet.prototxt', caffe.TEST)
+#net = caffe.Net('googlenet.prototxt', caffe.TEST)
+
+for k, v in net.blobs.items():
+    print (k, v.data.shape)
