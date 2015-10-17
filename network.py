@@ -90,10 +90,10 @@ class Network():
 
 
     def add_inception_5(self, bottom, counter = 'inception5',
-                        outs_1x1 = 64, 
-                        outs_3x3_reduce = 96, outs_3x3 = 128,
-                        outs_5x5_reduce = 16, outs_5x5 = 16,
-                        outs_pool_proj = 32):
+                        outs_1x1 = None,
+                        outs_3x3_reduce = None, outs_3x3 = None,
+                        outs_5x5_reduce = None, outs_5x5 = None,
+                        outs_pool_proj = None):
         """
         Append Inception-5 layer as described in Szegedy C. et al. Going deeper with convolutions
             You need to specify number of outputs for internal layers.
@@ -158,6 +158,102 @@ class Network():
         pool_max_3x3_relu = self.add_relu(pool_max_3x3_proj, counter = counter + '/relu_pool_proj')
         
         concatentation = [conv_1x1_relu,conv_3x3_relu,conv_5x5_relu,pool_max_3x3_relu]
+        concat = self.add_concat(concatentation, counter = counter + '/output')
+        return concat
+
+    def add_inception_6(self, bottom, counter = 'inception5',
+                        outs_1x1 = None,
+                        outs_3x3_reduce = None, outs_3x3 = None,
+                        outs_double_3x3_reduce = None, outs_double_3x3 = None,
+                        outs_pool_proj = None, outs_pool_proj_type = params.Pooling.MAX, pool_pad = 1,
+                        reduction_stride = None, reduction_inception = False):
+        """
+        Append Inception-6 layer as described in Scene Classification with Inception-7 by
+            Christian Szegedy with Julian Ibarz and Vincent Vanhoucke
+            You need to specify number of outputs for internal layers.
+            User must explicitly specify outputs count.
+        """
+        # Values that are common for conv layers
+        common_params = [dict(lr_mult = 1, decay_mult = 1), dict(lr_mult = 2, decay_mult = 0)]
+        fill_xavier = dict(type='xavier')
+        fill_const = dict(type='constant', value = 0.2)
+        
+        pool_stride = reduction_stride if reduction_inception else 1
+        
+        # reduction branch
+        conv_1x1 = None
+        conv_1x1_relu = None
+        if not(reduction_inception):
+            conv_1x1 = self.add_convolution(bottom, counter = counter + '/1x1',
+                                            num_output = outs_1x1, kernel_size = 1,
+                                            param = common_params,
+                                            weight_filler = fill_xavier,
+                                            bias_filler = fill_const,
+                                            )
+            conv_1x1_relu = self.add_relu(conv_1x1, counter = counter + '/relu_1x1')
+        
+        # 3x3 branch : reduce -> relu -> conv -> relu
+        reduce_3x3 = self.add_convolution(bottom, counter = counter + '/3x3_reduce',
+                                          num_output = outs_3x3_reduce, kernel_size = 1,
+                                          param = common_params,
+                                          weight_filler = fill_xavier,
+                                          bias_filler = fill_const,
+                                          )
+        reduce_3x3_relu = self.add_relu(reduce_3x3, counter = counter + '/relu_3x3_reduce')
+        conv_3x3 = self.add_convolution(reduce_3x3_relu, counter = counter + '/3x3',
+                                        num_output = outs_3x3, kernel_size = 3, pad = 1, stride = pool_stride,
+                                        param = common_params,
+                                        weight_filler = fill_xavier,
+                                        bias_filler = fill_const,
+                                        )
+        conv_3x3_relu = self.add_relu(conv_3x3, counter = counter + '/relu_3x3')
+        
+        # double 3x3 branch : reduce -> relu -> conv -> relu -> conv -> relu
+        double_3x3_reduce = self.add_convolution(bottom, counter = counter + '/double_3x3_reduce',
+                                          num_output = outs_double_3x3_reduce, kernel_size = 1,
+                                          param = common_params,
+                                          weight_filler = fill_xavier,
+                                          bias_filler = fill_const,
+                                          )
+        relu_double_3x3_reduce = self.add_relu(double_3x3_reduce, counter = counter + '/relu_double_3x3_reduce')
+
+        double_3x3_1 = self.add_convolution(relu_double_3x3_reduce, counter = counter + '/double_3x3_1',
+                                        num_output = outs_double_3x3, kernel_size = 5, pad = 2,
+                                        param = common_params,
+                                        weight_filler = fill_xavier,
+                                        bias_filler = fill_const,
+                                        )
+        relu_double_3x3_1 = self.add_relu(double_3x3_1, counter = counter + '/relu_double_3x3_1')
+        
+        double_3x3_2 = self.add_convolution(relu_double_3x3_1, counter = counter + '/double_3x3_2',
+                                        num_output = outs_double_3x3, kernel_size = 5, pad = 2, stride = pool_stride,
+                                        param = common_params,
+                                        weight_filler = fill_xavier,
+                                        bias_filler = fill_const,
+                                        )
+        relu_double_3x3_2 = self.add_relu(double_3x3_2, counter = counter + '/relu_double_3x3_2')
+        
+        # pool branch: pool-> projection -> relu
+        pool_max_3x3 = self.add_pooling(bottom, counter = counter + '/pool',
+                                        pool = outs_pool_proj_type,
+                                        kernel_size = 3, stride = pool_stride, pad = pool_pad,
+                                        )
+        pool_max_3x3_proj = None
+        pool_max_3x3_relu = None
+        if not(reduction_inception):
+            pool_max_3x3_proj = self.add_convolution(pool_max_3x3, counter = counter + '/pool_proj',
+                                                     num_output = outs_pool_proj, kernel_size = 1,
+                                                     param = common_params,
+                                                     weight_filler = fill_xavier,
+                                                     bias_filler = fill_const,
+                                                     )
+            pool_max_3x3_relu = self.add_relu(pool_max_3x3_proj, counter = counter + '/relu_pool_proj')
+        
+        concatentation = None
+        if not(reduction_inception):
+            concatentation = [conv_1x1_relu, conv_3x3_relu, relu_double_3x3_2, pool_max_3x3_relu]
+        else:
+            concatentation = [conv_3x3_relu, relu_double_3x3_2, pool_max_3x3]
         concat = self.add_concat(concatentation, counter = counter + '/output')
         return concat
 
