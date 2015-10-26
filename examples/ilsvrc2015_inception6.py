@@ -32,25 +32,25 @@ data = googlenet.blob_data()
 label = googlenet.blob_label()
 
 l_conv1 = googlenet.add_convolution(data, counter = 'conv1', num_output = 64, pad = 3, kernel_size = 7, stride = 2, **conv_kwargs)
-l_conv1_relu1 = googlenet.add_relu(l_conv1, counter = 'conv1_relu')
+l_conv1_relu1 = googlenet.add_relu(l_conv1, prepend_batch_norm = True, counter = 'conv1_relu')
 l_pool1 = googlenet.add_pooling(l_conv1_relu1, counter = 'pool1', pool = params.Pooling.MAX, kernel_size = 3, stride = 2)
 
 l_conv2 = googlenet.add_convolution(l_pool1, counter = 'conv2', num_output = 192, kernel_size = 3, stride = 1, **conv_kwargs)
-l_conv2_relu = googlenet.add_relu(l_conv2, counter = 'conv2_relu')
+l_conv2_relu = googlenet.add_relu(l_conv2, prepend_batch_norm = True, counter = 'conv2_relu')
 l_pool2 = googlenet.add_pooling(l_conv2_relu, counter = 'pool2', pool = params.Pooling.MAX, kernel_size = 3, stride = 2)
 
-l_inception6_3a = googlenet.add_inception_6(l_pool2, counter = 'inception_3a', **inception3a_kwargs)
-l_inception6_3b = googlenet.add_inception_6(l_inception6_3a, counter = 'inception_3b', **inception3b_kwargs)
-l_inception6_3c = googlenet.add_inception_6(l_inception6_3b, counter = 'inception_3c', **inception3c_kwargs)
+l_inception6_3a = googlenet.add_inception_6(l_pool2, counter = 'inception_3a', prepend_batch_norm = True, **inception3a_kwargs)
+l_inception6_3b = googlenet.add_inception_6(l_inception6_3a, counter = 'inception_3b', prepend_batch_norm = True, **inception3b_kwargs)
+l_inception6_3c = googlenet.add_inception_6(l_inception6_3b, counter = 'inception_3c', prepend_batch_norm = True, **inception3c_kwargs)
 
-l_inception6_4a = googlenet.add_inception_6(l_inception6_3c, counter = 'inception_4a', **inception4a_kwargs)
-l_inception6_4b = googlenet.add_inception_6(l_inception6_4a, counter = 'inception_4b', **inception4b_kwargs)
-l_inception6_4c = googlenet.add_inception_6(l_inception6_4b, counter = 'inception_4c', **inception4c_kwargs)
-l_inception6_4d = googlenet.add_inception_6(l_inception6_4c, counter = 'inception_4d', **inception4d_kwargs)
-l_inception6_4e = googlenet.add_inception_6(l_inception6_4d, counter = 'inception_4e', **inception4e_kwargs)
+l_inception6_4a = googlenet.add_inception_6(l_inception6_3c, counter = 'inception_4a', prepend_batch_norm = True, **inception4a_kwargs)
+l_inception6_4b = googlenet.add_inception_6(l_inception6_4a, counter = 'inception_4b', prepend_batch_norm = True, **inception4b_kwargs)
+l_inception6_4c = googlenet.add_inception_6(l_inception6_4b, counter = 'inception_4c', prepend_batch_norm = True, **inception4c_kwargs)
+l_inception6_4d = googlenet.add_inception_6(l_inception6_4c, counter = 'inception_4d', prepend_batch_norm = True, **inception4d_kwargs)
+l_inception6_4e = googlenet.add_inception_6(l_inception6_4d, counter = 'inception_4e', prepend_batch_norm = True, **inception4e_kwargs)
 
-l_inception6_5a = googlenet.add_inception_6(l_inception6_4e, counter = 'inception_5a', **inception5a_kwargs)
-l_inception6_5b = googlenet.add_inception_6(l_inception6_5a, counter = 'inception_5b', **inception5b_kwargs)
+l_inception6_5a = googlenet.add_inception_6(l_inception6_4e, counter = 'inception_5a', prepend_batch_norm = True, **inception5a_kwargs)
+l_inception6_5b = googlenet.add_inception_6(l_inception6_5a, counter = 'inception_5b', prepend_batch_norm = True, **inception5b_kwargs)
 
 l_pool5 = googlenet.add_pooling(l_inception6_5b, counter = 'pool_7x7', pool = params.Pooling.AVE, kernel_size = 7, stride = 1)
 
