@@ -1,5 +1,6 @@
 import sys
 sys.path.insert(0, '..')
+sys.path.append('/home/nvidia/versus_dev/ilsvrc_2015_stpetersburg_team/python')
 
 from caffe import params as params
 import caffe
