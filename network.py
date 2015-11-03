@@ -72,7 +72,7 @@ class Network():
 
     def add_relu(self, bottom, counter = 'relu', in_place = True, prepend_batch_norm = False, **kwargs):
         if prepend_batch_norm:
-            bn = self.add_layer(bottom, 'BatchNorm', counter + '_bn')
+            bn = self.add_layer(bottom, 'BatchNorm', counter + '_bn', in_place = in_place, param = [dict(lr_mult = 0), dict(lr_mult = 0), dict(lr_mult = 0)])
             return self.add_layer(bn, 'ReLU', counter, in_place = in_place, **kwargs)
         else:
             return self.add_layer(bottom, 'ReLU', counter, in_place = in_place, **kwargs)
